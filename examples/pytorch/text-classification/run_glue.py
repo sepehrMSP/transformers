@@ -564,71 +564,71 @@ def main():
         )
         metrics["train_samples"] = min(max_train_samples, len(train_dataset))
 
-        trainer.save_model()  # Saves the tokenizer too for easy upload
+        # trainer.save_model()  # Saves the tokenizer too for easy upload
 
-        trainer.log_metrics("train", metrics)
-        trainer.save_metrics("train", metrics)
-        trainer.save_state()
+        # trainer.log_metrics("train", metrics)
+        # trainer.save_metrics("train", metrics)
+        # trainer.save_state()
 
     # Evaluation
-    if training_args.do_eval:
-        logger.info("*** Evaluate ***")
+    # if training_args.do_eval:
+    #     logger.info("*** Evaluate ***")
 
-        # Loop to handle MNLI double evaluation (matched, mis-matched)
-        tasks = [data_args.task_name]
-        eval_datasets = [eval_dataset]
-        if data_args.task_name == "mnli":
-            tasks.append("mnli-mm")
-            valid_mm_dataset = raw_datasets["validation_mismatched"]
-            if data_args.max_eval_samples is not None:
-                max_eval_samples = min(len(valid_mm_dataset), data_args.max_eval_samples)
-                valid_mm_dataset = valid_mm_dataset.select(range(max_eval_samples))
-            eval_datasets.append(valid_mm_dataset)
-            combined = {}
+    #     # Loop to handle MNLI double evaluation (matched, mis-matched)
+    #     tasks = [data_args.task_name]
+    #     eval_datasets = [eval_dataset]
+    #     if data_args.task_name == "mnli":
+    #         tasks.append("mnli-mm")
+    #         valid_mm_dataset = raw_datasets["validation_mismatched"]
+    #         if data_args.max_eval_samples is not None:
+    #             max_eval_samples = min(len(valid_mm_dataset), data_args.max_eval_samples)
+    #             valid_mm_dataset = valid_mm_dataset.select(range(max_eval_samples))
+    #         eval_datasets.append(valid_mm_dataset)
+    #         combined = {}
 
-        for eval_dataset, task in zip(eval_datasets, tasks):
-            metrics = trainer.evaluate(eval_dataset=eval_dataset)
+    #     for eval_dataset, task in zip(eval_datasets, tasks):
+    #         metrics = trainer.evaluate(eval_dataset=eval_dataset)
 
-            max_eval_samples = (
-                data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
-            )
-            metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
+    #         max_eval_samples = (
+    #             data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
+    #         )
+    #         metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
 
-            if task == "mnli-mm":
-                metrics = {k + "_mm": v for k, v in metrics.items()}
-            if task is not None and "mnli" in task:
-                combined.update(metrics)
+    #         if task == "mnli-mm":
+    #             metrics = {k + "_mm": v for k, v in metrics.items()}
+    #         if task is not None and "mnli" in task:
+    #             combined.update(metrics)
 
-            trainer.log_metrics("eval", metrics)
-            trainer.save_metrics("eval", combined if task is not None and "mnli" in task else metrics)
+    #         trainer.log_metrics("eval", metrics)
+    #         trainer.save_metrics("eval", combined if task is not None and "mnli" in task else metrics)
 
-    if training_args.do_predict:
-        logger.info("*** Predict ***")
+    # if training_args.do_predict:
+    #     logger.info("*** Predict ***")
 
-        # Loop to handle MNLI double evaluation (matched, mis-matched)
-        tasks = [data_args.task_name]
-        predict_datasets = [predict_dataset]
-        if data_args.task_name == "mnli":
-            tasks.append("mnli-mm")
-            predict_datasets.append(raw_datasets["test_mismatched"])
+    #     # Loop to handle MNLI double evaluation (matched, mis-matched)
+    #     tasks = [data_args.task_name]
+    #     predict_datasets = [predict_dataset]
+    #     if data_args.task_name == "mnli":
+    #         tasks.append("mnli-mm")
+    #         predict_datasets.append(raw_datasets["test_mismatched"])
 
-        for predict_dataset, task in zip(predict_datasets, tasks):
-            # Removing the `label` columns because it contains -1 and Trainer won't like that.
-            predict_dataset = predict_dataset.remove_columns("label")
-            predictions = trainer.predict(predict_dataset, metric_key_prefix="predict").predictions
-            predictions = np.squeeze(predictions) if is_regression else np.argmax(predictions, axis=1)
+    #     for predict_dataset, task in zip(predict_datasets, tasks):
+    #         # Removing the `label` columns because it contains -1 and Trainer won't like that.
+    #         predict_dataset = predict_dataset.remove_columns("label")
+    #         predictions = trainer.predict(predict_dataset, metric_key_prefix="predict").predictions
+    #         predictions = np.squeeze(predictions) if is_regression else np.argmax(predictions, axis=1)
 
-            output_predict_file = os.path.join(training_args.output_dir, f"predict_results_{task}.txt")
-            if trainer.is_world_process_zero():
-                with open(output_predict_file, "w") as writer:
-                    logger.info(f"***** Predict results {task} *****")
-                    writer.write("index\tprediction\n")
-                    for index, item in enumerate(predictions):
-                        if is_regression:
-                            writer.write(f"{index}\t{item:3.3f}\n")
-                        else:
-                            item = label_list[item]
-                            writer.write(f"{index}\t{item}\n")
+    #         output_predict_file = os.path.join(training_args.output_dir, f"predict_results_{task}.txt")
+    #         if trainer.is_world_process_zero():
+    #             with open(output_predict_file, "w") as writer:
+    #                 logger.info(f"***** Predict results {task} *****")
+    #                 writer.write("index\tprediction\n")
+    #                 for index, item in enumerate(predictions):
+    #                     if is_regression:
+    #                         writer.write(f"{index}\t{item:3.3f}\n")
+    #                     else:
+    #                         item = label_list[item]
+    #                         writer.write(f"{index}\t{item}\n")
 
     kwargs = {"finetuned_from": model_args.model_name_or_path, "tasks": "text-classification"}
     if data_args.task_name is not None:
@@ -637,10 +637,10 @@ def main():
         kwargs["dataset_args"] = data_args.task_name
         kwargs["dataset"] = f"GLUE {data_args.task_name.upper()}"
 
-    if training_args.push_to_hub:
-        trainer.push_to_hub(**kwargs)
-    else:
-        trainer.create_model_card(**kwargs)
+    # if training_args.push_to_hub:
+    #     trainer.push_to_hub(**kwargs)
+    # else:
+    #     trainer.create_model_card(**kwargs)
 
 
 def _mp_fn(index):
